@@ -8,9 +8,54 @@ const EmailAdapter = () => {
   const [comprehensibilityIndex, setComprehensibilityIndex] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
 
+  const generatePrompt = () => {
+    let prompt = "Você é um assistente especializado em adaptar e-mails para diferentes públicos. ";
+
+    // Adiciona detalhes sobre o perfil selecionado
+    switch(profile) {
+      case 'juridico':
+        prompt += "O destinatário é um profissional da área jurídica. Use termos técnicos apropriados e mantenha um tom profissional. ";
+        break;
+      case 'rh':
+        prompt += "O destinatário trabalha em Recursos Humanos. Use uma linguagem empática e focada em pessoas. ";
+        break;
+      case 'c-level':
+        prompt += "O destinatário é um executivo de alto nível. Seja direto, focado em resultados e use termos estratégicos. ";
+        break;
+      case 'cliente':
+        prompt += "O destinatário é um cliente pessoa física. Use uma linguagem clara, evite jargões técnicos e mantenha um tom amigável. ";
+        break;
+      case 'parte-contraria':
+        prompt += "O destinatário é a parte contrária em um processo. Mantenha um tom neutro, profissional e evite linguagem que possa ser interpretada como hostil. ";
+        break;
+      case 'advogado-contrario':
+        prompt += "O destinatário é o advogado da parte contrária. Use linguagem técnica jurídica, mantenha um tom respeitoso e profissional. ";
+        break;
+      default:
+        prompt += "Adapte o e-mail de forma geral para melhorar sua clareza e eficácia. ";
+    }
+
+    // Adiciona instruções sobre o nível de formalidade
+    if (formalityLevel < 25) {
+      prompt += "Use um tom muito informal, como se estivesse conversando com um amigo próximo. ";
+    } else if (formalityLevel < 50) {
+      prompt += "Use um tom casual, mas ainda profissional. ";
+    } else if (formalityLevel < 75) {
+      prompt += "Mantenha um tom formal, mas não excessivamente rígido. ";
+    } else {
+      prompt += "Use um tom muito formal e respeitoso. ";
+    }
+
+    prompt += `O nível de formalidade desejado é ${formalityLevel}%. `;
+    prompt += "Por favor, adapte o seguinte e-mail de acordo com essas instruções:\n\n";
+
+    return prompt;
+  };
+
   const handleSubmit = async () => {
     setIsLoading(true);
     try {
+      const prompt = generatePrompt();
       const response = await fetch('https://chat.maritaca.ai/api/chat/inference', {
         method: 'POST',
         headers: {
@@ -19,8 +64,8 @@ const EmailAdapter = () => {
         },
         body: JSON.stringify({
           messages: [
-            { role: "system", content: `Você é um assistente especializado em adaptar e-mails para diferentes públicos. O perfil do destinatário é: ${profile}. O nível de formalidade desejado é: ${formalityLevel}%.` },
-            { role: "user", content: `Por favor, adapte o seguinte e-mail:\n\n${emailText}` }
+            { role: "system", content: prompt },
+            { role: "user", content: emailText }
           ],
           temperature: 0.7,
           max_tokens: 1000,
