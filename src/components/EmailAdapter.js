@@ -8,77 +8,22 @@ const EmailAdapter = () => {
   const [comprehensibilityIndex, setComprehensibilityIndex] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
 
-  const generatePrompt = () => {
-    let prompt = "Você é um assistente especializado em adaptar e-mails para diferentes públicos. ";
-
-    // Adiciona detalhes sobre o perfil selecionado
-    switch(profile) {
-      case 'juridico':
-        prompt += "O destinatário é um profissional da área jurídica. Use termos técnicos apropriados e mantenha um tom profissional. ";
-        break;
-      case 'rh':
-        prompt += "O destinatário trabalha em Recursos Humanos. Use uma linguagem empática e focada em pessoas. ";
-        break;
-      case 'c-level':
-        prompt += "O destinatário é um executivo de alto nível. Seja direto, focado em resultados e use termos estratégicos. ";
-        break;
-      case 'cliente':
-        prompt += "O destinatário é um cliente pessoa física. Use uma linguagem clara, evite jargões técnicos e mantenha um tom amigável. ";
-        break;
-      case 'parte-contraria':
-        prompt += "O destinatário é a parte contrária em um processo. Mantenha um tom neutro, profissional e evite linguagem que possa ser interpretada como hostil. ";
-        break;
-      case 'advogado-contrario':
-        prompt += "O destinatário é o advogado da parte contrária. Use linguagem técnica jurídica, mantenha um tom respeitoso e profissional. ";
-        break;
-      default:
-        prompt += "Adapte o e-mail de forma geral para melhorar sua clareza e eficácia. ";
-    }
-
-    // Adiciona instruções sobre o nível de formalidade
-    if (formalityLevel < 25) {
-      prompt += "Use um tom muito informal, como se estivesse conversando com um amigo próximo. ";
-    } else if (formalityLevel < 50) {
-      prompt += "Use um tom casual, mas ainda profissional. ";
-    } else if (formalityLevel < 75) {
-      prompt += "Mantenha um tom formal, mas não excessivamente rígido. ";
-    } else {
-      prompt += "Use um tom muito formal e respeitoso. ";
-    }
-
-    prompt += `O nível de formalidade desejado é ${formalityLevel}%. `;
-    prompt += "Por favor, adapte o seguinte e-mail de acordo com essas instruções:\n\n";
-
-    return prompt;
-  };
-
   const handleSubmit = async () => {
     setIsLoading(true);
     try {
-      const prompt = generatePrompt();
-      const response = await fetch('https://chat.maritaca.ai/api/chat/inference', {
+      const response = await fetch('/api/adapt-email', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': 'Key YOUR_API_KEY_HERE' // Substitua pelo seu API key real
         },
-        body: JSON.stringify({
-          messages: [
-            { role: "system", content: prompt },
-            { role: "user", content: emailText }
-          ],
-          temperature: 0.7,
-          max_tokens: 1000,
-          model: "maritalk"
-        })
+        body: JSON.stringify({ emailText, profile, formalityLevel }),
       });
 
       const data = await response.json();
       
-      if (data.choices && data.choices[0] && data.choices[0].message) {
-        setAdjustedText(data.choices[0].message.content);
-        // Simulando um índice de compreensibilidade baseado no comprimento do texto
-        setComprehensibilityIndex(Math.min(100, Math.floor(data.choices[0].message.content.length / 5)));
+      if (data.adjustedText) {
+        setAdjustedText(data.adjustedText);
+        setComprehensibilityIndex(data.comprehensibilityIndex);
       } else {
         throw new Error('Resposta da API inválida');
       }
@@ -130,7 +75,7 @@ const EmailAdapter = () => {
             min="0"
             max="100"
             value={formalityLevel}
-            onChange={(e) => setFormalityLevel(e.target.value)}
+            onChange={(e) => setFormalityLevel(parseInt(e.target.value))}
             className="w-full"
           />
         </div>
@@ -165,14 +110,6 @@ const EmailAdapter = () => {
             <p className="mt-2 text-center font-semibold">
               {getComprehensibilityLabel(comprehensibilityIndex)}
             </p>
-          </div>
-          
-          <div>
-            <p className="mb-2">O texto ajustado está adequado?</p>
-            <div className="flex space-x-2">
-              <button className="bg-green-500 text-white p-2 rounded hover:bg-green-600">Sim</button>
-              <button className="bg-red-500 text-white p-2 rounded hover:bg-red-600">Não</button>
-            </div>
           </div>
         </div>
       )}
