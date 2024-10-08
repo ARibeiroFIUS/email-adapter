@@ -1,3 +1,5 @@
+console.log('Iniciando o servidor...');
+
 const express = require('express');
 const cors = require('cors');
 const { MariTalk } = require('maritalk');
@@ -14,14 +16,17 @@ const model = new MariTalk({
   model: "sabia-3"
 });
 
+app.get('/', (req, res) => {
+  res.send('Email Adapter API is running');
+});
+
 app.post('/api/adapt-email', async (req, res) => {
   try {
     const { emailText, profile, formalityLevel } = req.body;
-
     const prompt = generatePrompt(profile, formalityLevel, emailText);
-
+    console.log('Enviando solicitação para a API MaritALK...');
     const response = await model.generate(prompt, { max_tokens: 1000 });
-
+    console.log('Resposta recebida da API MaritALK');
     if (response && response.answer) {
       res.json({ 
         adjustedText: response.answer,
@@ -90,4 +95,5 @@ function calculateComprehensibilityIndex(text) {
 
 app.listen(port, () => {
   console.log(`Servidor rodando na porta ${port}`);
+  console.log('Variáveis de ambiente carregadas:', process.env.MARITALK_API_KEY ? 'MARITALK_API_KEY está definida' : 'MARITALK_API_KEY não está definida');
 });
