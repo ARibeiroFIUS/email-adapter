@@ -1,9 +1,4 @@
 import React, { useState } from 'react';
-import { Slider } from '@/components/ui/slider';
-import { Button } from '@/components/ui/button';
-import { Textarea } from '@/components/ui/textarea';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Progress } from '@/components/ui/progress';
 
 const EmailAdapter = () => {
   const [emailText, setEmailText] = useState('');
@@ -11,11 +6,43 @@ const EmailAdapter = () => {
   const [formalityLevel, setFormalityLevel] = useState(50);
   const [adjustedText, setAdjustedText] = useState('');
   const [comprehensibilityIndex, setComprehensibilityIndex] = useState(0);
+  const [isLoading, setIsLoading] = useState(false);
 
-  const handleSubmit = () => {
-    // Simulação de processamento do e-mail
-    setAdjustedText(`Texto ajustado para o perfil ${profile} com nível de formalidade ${formalityLevel}%:\n\n${emailText}`);
-    setComprehensibilityIndex(Math.floor(Math.random() * 100));
+  const handleSubmit = async () => {
+    setIsLoading(true);
+    try {
+      const response = await fetch('https://chat.maritaca.ai/api/chat/inference', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Key YOUR_API_KEY_HERE' // Substitua pelo seu API key real
+        },
+        body: JSON.stringify({
+          messages: [
+            { role: "system", content: `Você é um assistente especializado em adaptar e-mails para diferentes públicos. O perfil do destinatário é: ${profile}. O nível de formalidade desejado é: ${formalityLevel}%.` },
+            { role: "user", content: `Por favor, adapte o seguinte e-mail:\n\n${emailText}` }
+          ],
+          temperature: 0.7,
+          max_tokens: 1000,
+          model: "maritalk"
+        })
+      });
+
+      const data = await response.json();
+      
+      if (data.choices && data.choices[0] && data.choices[0].message) {
+        setAdjustedText(data.choices[0].message.content);
+        // Simulando um índice de compreensibilidade baseado no comprimento do texto
+        setComprehensibilityIndex(Math.min(100, Math.floor(data.choices[0].message.content.length / 5)));
+      } else {
+        throw new Error('Resposta da API inválida');
+      }
+    } catch (error) {
+      console.error('Erro ao processar o e-mail:', error);
+      setAdjustedText('Ocorreu um erro ao processar o e-mail. Por favor, tente novamente.');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const getComprehensibilityLabel = (index) => {
@@ -29,52 +56,67 @@ const EmailAdapter = () => {
     <div className="max-w-4xl mx-auto p-4 space-y-6">
       <h1 className="text-2xl font-bold text-center">Adaptador de E-mails</h1>
       
-      <Textarea
+      <textarea
         placeholder="Insira o texto do e-mail"
         value={emailText}
         onChange={(e) => setEmailText(e.target.value)}
-        className="min-h-[200px]"
+        className="w-full p-2 border rounded min-h-[200px]"
       />
       
       <div className="flex space-x-4">
-        <Select onValueChange={setProfile}>
-          <SelectTrigger className="w-[200px]">
-            <SelectValue placeholder="Selecione o perfil" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="juridico">Jurídico</SelectItem>
-            <SelectItem value="rh">RH</SelectItem>
-            <SelectItem value="c-level">C-level</SelectItem>
-            <SelectItem value="cliente">Cliente Pessoa Física</SelectItem>
-            <SelectItem value="parte-contraria">Parte Contrária</SelectItem>
-            <SelectItem value="advogado-contrario">Advogado da Parte Contrária</SelectItem>
-          </SelectContent>
-        </Select>
+        <select
+          value={profile}
+          onChange={(e) => setProfile(e.target.value)}
+          className="w-[200px] p-2 border rounded"
+        >
+          <option value="">Selecione o perfil</option>
+          <option value="juridico">Jurídico</option>
+          <option value="rh">RH</option>
+          <option value="c-level">C-level</option>
+          <option value="cliente">Cliente Pessoa Física</option>
+          <option value="parte-contraria">Parte Contrária</option>
+          <option value="advogado-contrario">Advogado da Parte Contrária</option>
+        </select>
         
         <div className="flex-1">
-          <label className="block text-sm font-medium mb-2">Nível de Formalidade</label>
-          <Slider
-            value={[formalityLevel]}
-            onValueChange={(value) => setFormalityLevel(value[0])}
-            max={100}
-            step={1}
+          <label className="block text-sm font-medium mb-2">Nível de Formalidade: {formalityLevel}%</label>
+          <input
+            type="range"
+            min="0"
+            max="100"
+            value={formalityLevel}
+            onChange={(e) => setFormalityLevel(e.target.value)}
+            className="w-full"
           />
         </div>
       </div>
       
-      <Button onClick={handleSubmit} className="w-full">Ajustar E-mail</Button>
+      <button
+        onClick={handleSubmit}
+        disabled={isLoading}
+        className={`w-full ${isLoading ? 'bg-gray-400' : 'bg-blue-500 hover:bg-blue-600'} text-white p-2 rounded`}
+      >
+        {isLoading ? 'Processando...' : 'Ajustar E-mail'}
+      </button>
       
       {adjustedText && (
         <div className="space-y-4">
-          <Textarea
+          <textarea
             value={adjustedText}
             readOnly
-            className="min-h-[200px]"
+            className="w-full p-2 border rounded min-h-[200px]"
           />
           
           <div>
             <label className="block text-sm font-medium mb-2">Índice de Compreensibilidade</label>
-            <Progress value={comprehensibilityIndex} className="w-full" />
+            <div className="w-full bg-gray-200 rounded">
+              <div
+                className="bg-blue-500 text-xs leading-none py-1 text-center text-white rounded"
+                style={{width: `${comprehensibilityIndex}%`}}
+              >
+                {comprehensibilityIndex}%
+              </div>
+            </div>
             <p className="mt-2 text-center font-semibold">
               {getComprehensibilityLabel(comprehensibilityIndex)}
             </p>
@@ -83,8 +125,8 @@ const EmailAdapter = () => {
           <div>
             <p className="mb-2">O texto ajustado está adequado?</p>
             <div className="flex space-x-2">
-              <Button variant="outline">Sim</Button>
-              <Button variant="outline">Não</Button>
+              <button className="bg-green-500 text-white p-2 rounded hover:bg-green-600">Sim</button>
+              <button className="bg-red-500 text-white p-2 rounded hover:bg-red-600">Não</button>
             </div>
           </div>
         </div>
